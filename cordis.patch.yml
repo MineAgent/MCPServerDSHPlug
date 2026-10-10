@@ -1,0 +1,94 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (C) 2026 MineAgent
+#
+# 把 Minecraft 客户端控制桥（MCPServer）接进 DSH profile。
+#
+# 桥是一个独立的 MCP stdio 程序：/home/DSH/Projects/mcp/server
+# （入口 bin/minecraft-mcp-bridge.mjs，自带依赖，可以脱离 DSH 单独跑）。
+# 它把 .minecraft/mods 里几个模组挂在 127.0.0.1:3420 的 HTTP 接口
+# （/ctl 控制、/aif 只读状态、/op 容器操作）暴露成工具：
+#   mcp__minecraft__status / help / player / inventory / world / chat /
+#   sounds / screenshot / cursor / control / op
+#
+# toolCallTimeoutMs 要盖过桥自己的超时（/op 的合成最长约 2 分钟，
+# 含 type 的 /ctl 请求最长约 2 分钟），否则长命令会被宿主先掐断。
+- insert:
+    - id: mcp-minecraft
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: minecraft
+        transport: stdio
+        command: /usr/bin/node
+        args:
+          # MCPServer 的入口。换机器或换目录时，用环境变量 MC_BRIDGE_BIN 覆盖，
+          # 或者直接把下面的默认值改成你本地的 bin/minecraft-mcp-bridge.mjs 路径。
+          - !!js process.env.MC_BRIDGE_BIN ?? '/home/DSH/Projects/mcp/server/bin/minecraft-mcp-bridge.mjs'
+        toolCallTimeoutMs: 240000
+        failOnStartupError: true
+
+# MC 模式：与「标准模式 / PTC 模式 / 极简模式 / 创造模式」并列的一个 agent preset。
+#
+# 工具面 = 白名单：mcp__minecraft__* + todo_write / create_goal / get_goal /
+# update_goal / exit_plan_mode / ask_user_question。其余全局工具由本包的
+# index.js（mc-mode-tools）在挂载时按当时的全局工具表 deny 掉。
+#
+# 系统提示词用 persona 的 complete 模式：整段提示词就是下面 prefix 的文本，
+# 宿主的基线提示词、工作目录、运行时上下文、工具引导都不会追加进来。
+#
+# 这四个工具在宿主层都是 disabled 的（tools.goal / tool-todo / plan-mode /
+# tool-ask-user），所以要在这个 preset 里挂载；只有 mcp__minecraft__* 来自
+# 宿主全局行，靠白名单保留。
+- insert:
+    - id: preset-mc
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: mc
+        name: MC 模式
+        description: 把 Minecraft 客户端交给 Agent：工具面只留游戏控制与观测，玩法由你在对话里说明。
+        order: 5
+        plugins:
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              complete: true
+              includeRuntimeContext: false
+              prefix: |-
+                你正在操控本机的 Minecraft（Java 版）客户端，用 mcp__minecraft__ 开头的工具观察世界、采取行动。
+
+                节奏
+                1. 一次做一个动作，做完立刻用 player 和 inventory 对账。
+                2. 想知道刚才发生了什么，就读 chat 和 sounds：指令输出、Baritone 反馈、报错与关键声音都在那里。
+                3. 定时输入配合 waitMs 使用，等它做完再读状态。
+                4. 界面操作优先用 op：结果精确，并且直接返回。需要点鼠标时，先 screenshot 看清界面，再用 cursor 取坐标，最后用 control 的 `mouse goto <x> <y>` 定位。
+                5. 服务异常时先跑 status 自检。
+
+                任务
+                - 多步任务用 todo_write 记录进度。
+                - 跨轮次的长期目标用 create_goal 建立，get_goal 查看，update_goal 更新或结束。
+                - 需要用户做选择时用 ask_user_question。
+                - 动手实现方案前，用 exit_plan_mode 提交计划并等待确认。
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                config:
+                  # persona 的 complete 模式让整段提示词只有 prefix，这段 section 不会
+                  # 出现在请求里；plan-mode 要求 section 非空，所以留一句行为约定。
+                  section: |-
+                    计划模式：先把方案想清楚，再用 exit_plan_mode 提交完整计划并等待确认。
+                    计划写清目标、成功标准、要做哪些改动、怎么验证，以及有哪些假设。
+                    确认之后再动手。
+          - id: mc-mode-tools
+            name: dsh-minecraft-bridge-bundle

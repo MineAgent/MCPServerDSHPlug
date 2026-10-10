@@ -1,0 +1,35 @@
+{
+  "name": "dsh-minecraft-bridge-bundle",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DSH bundle：把本机的 Minecraft 客户端控制桥（MCP stdio server）接进 profile（mcp__minecraft__* 工具），并声明只保留这些工具的「MC 模式」agent preset。",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml",
+    "LICENSE",
+    "LICENSE.CC-BY-NC-SA-4.0",
+    "README.md"
+  ],
+  "author": "MineAgent",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MineAgent/MCPServerDSHPlug.git"
+  },
+  "license": "GPL-3.0-only",
+  "meta": {
+    "title": "Minecraft 桥 + MC 模式",
+    "description": "接入 MCPServer（MCP stdio 程序），并声明只保留 mcp__minecraft__* 与少量流程工具的「MC 模式」。"
+  },
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
