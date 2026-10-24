@@ -4,28 +4,34 @@
 # MCPServerDSHPlug
 
 把 [MCPServer](https://github.com/MineAgent/MCPServer) 这个独立的 MCP stdio 程序
-接进 DeepSeek Harness，并附带一个只保留游戏控制能力的「**MC 模式**」。
+接进 DeepSeek Harness 的「**MC 模式**」与「**MC 模式+**」。
 
 它是 DSH 的 **bundle**：一个 npm 包，`package.json` 里声明 `dsh.bundle.patch`，
-profile 加载时把 `cordis.patch.yml` 这一层叠到组合上。仓库里没有构建步骤，
-`index.js` 就是纯 JavaScript。
+profile 加载时把 `cordis.patch.yml` 这一层叠到组合上。它是**配置型 bundle**：
+包里没有插件模块，只有两份 preset 声明。
 
 ## 它做两件事
 
-1. **接入 MCPServer**：插入一行 `@deepseek-ai/dsh-mcp-client`，用 stdio 启动
-   `bin/minecraft-mcp-bridge.mjs`，于是 DSH 里出现 11 个 `mcp__minecraft__*` 工具
+1. **声明两个模式**：两个 `@deepseek-ai/dsh-agent-preset` 声明——`id: mc`
+   （「MC 模式」）、`id: mc-plus`（「MC 模式+」，标准模式 ∪ MC 模式）。
+2. **在这两个模式的 scope 里接入 MCPServer**：各自的插件表里挂一行
+   `@deepseek-ai/dsh-mcp-client`，用 stdio 启动 `bin/minecraft-mcp-bridge.mjs`，
+   于是选了这两个模式的 Agent 出现 11 个 `mcp__minecraft__*` 工具
    （status / help / player / inventory / world / chat / sounds / screenshot /
-   cursor / control / op）。
-2. **声明 MC 模式**：一个 `@deepseek-ai/dsh-agent-preset` 声明（`id: mc`，
-   显示名「MC 模式」）+ 预设侧插件 `mc-mode-tools`。
+   cursor / control / op），其他模式完全看不到这些工具。
+   「MC 模式+」在这 11 个之外还有标准模式的全部工具，系统提示词与标准模式相同。
+
+MCP 客户端放在 preset 里而不是宿主全局层，是因为 `dsh-mcp-client` 把工具注册在
+挂载它的 scope 上：preset 自己挂载的工具只在选中该 preset 的 Agent 面前出现。
+这比「全局注册 + 在每个模式里逐个 deny」更稳——以后新增的模式不会漏网，也不需要
+在别处维护一份隐藏名单。宿主全局层不再有任何 Minecraft 相关行。
 
 ## 仓库结构（bundle 规范）
 
 ```
-package.json        声明 dsh.bundle.patch、dsh.bundle 的补丁文件与显示元数据
-cordis.patch.yml    这一层：mcp-client 行 + preset-mc 声明
-index.js            供 patch 行按包名引用的插件模块（mc-mode-tools）
-LICENSE             代码许可（GPL-3.0-only）
+package.json        声明 dsh.bundle.patch 与显示元数据（无需 main/exports）
+cordis.patch.yml    这一层：preset-mc 与 preset-mc-plus 两份声明（各含 mcp-client 行）
+LICENSE             代码与配置许可（GPL-3.0-only）
 LICENSE.CC-BY-NC-SA-4.0  文档许可
 ```
 
@@ -61,36 +67,60 @@ dsh plugin --profile web add github:MineAgent/MCPServerDSHPlug
 验证这一层被加载：
 
 ```sh
-dsh --profile web --dump-config | grep -A8 'mcp-minecraft'
+dsh --profile web --dump-config | grep -A10 'mcp-minecraft'
 ```
 
-装好后在 DSH 里调 `mcp__minecraft__status`：游戏没开时会返回一句可读的中文错误，
-说明桥通了。
+装好后，在一个**新建**任务里选「MC 模式」，调 `mcp__minecraft__status`：游戏没开时
+会返回一句可读的中文错误，说明桥通了。其他模式（标准 / PTC / 极简 / 创造）的工具表里
+没有 `mcp__minecraft__*`。
 
 ## MC 模式
 
 `preset-mc` 与标准 / PTC / 极简 / 创造并列，`order: 5`。它和别的模式有两处不同：
 
-**工具面收窄成白名单**（`index.js` 的 `mc-mode-tools`）：挂载时读一次全局工具表，
-把白名单以外的全局工具用 `tools.restrict({ deny })` 隐藏。最终可调用：
+**工具面由 preset 自己的插件表决定**：这套部署里工具本来就挂在 preset 上，
+宿主全局层是空的，所以 MC 模式能用什么完全等于下面这份清单，没有继承来的工具
+需要再过滤。最终可调用：
 
 ```
-mcp__minecraft__*（11 个）
+mcp__minecraft__*（11 个，preset 自己挂载的 mcp-client 提供）
 todo_write  create_goal  get_goal  update_goal  exit_plan_mode  ask_user_question
 ```
 
-用 `deny` 而不是 `allow`：`allow` 会把 preset 自己注册的工具一并隐藏，而且只能
-点名全局工具；`deny` 只削全局层。名单在挂载时算出来，宿主以后新增的全局工具会
-自动被隐藏；全局表读成空表时插件直接抛错，让问题在插件列表里现形。
-
 `create_goal` / `get_goal` / `update_goal`（`dsh-tool-goal`）、`ask_user_question`
 （`dsh-tool-ask-user`）、`todo_write`（`dsh-tool-todo`）、`exit_plan_mode`
-（`dsh-plan-mode`）在宿主层都是 `disabled` 的，所以 preset 里逐个挂载。
+（`dsh-plan-mode`）在宿主层都是 `disabled` 的，所以 preset 里逐个挂载；
+`mcp__minecraft__*` 来自 preset 自己挂载的 mcp-client。
 
 **系统提示词整段替换**（`@deepseek-ai/dsh-persona`，`complete: true` +
 `includeRuntimeContext: false`）：宿主基线提示词、工作目录、运行时上下文、工具引导
 都不会追加，会话的系统提示词就是 patch 里那段 prefix，只留「节奏」和「任务」两节；
 每个工具怎么用由工具自己的说明负责，玩法交给用户在对话里说。
+
+## MC 模式+
+
+`preset-mc-plus`（`id: mc-plus`，显示名「MC 模式+」，`order: 8`）是标准模式与
+MC 模式的并集：
+
+- **工具面** = 标准模式的全部插件 + `mcp__minecraft__*`（11 个）。
+- **系统提示词** = 标准模式的提示词，一字不改。
+
+`plugins` 就是 shipped `@deepseek-ai/dsh-web-app/presets/standard.patch.yml` 里那份
+清单的完整副本（21 行，`name` / `disabled` / `config` 逐字相同），另加一行
+`mcp-minecraft`。这份副本不会自动跟随 `dsh-web-app` 升级，standard 的清单若增减，
+这里要跟着同步。
+
+`persona` 只写标准模式那句 `prefix: You are a coding agent powered by the
+{{model}} model.`，**不设** `complete`，也**不设 `suffix`**——当前 DSH 只注册
+`provider` / `model`，没有 `{{cwd}}`；工作目录由 `working-directory` 服务作为
+运行时上下文提供。写 `{{cwd}}` 会在提示词装配阶段抛
+`unknown prompt variable "{{cwd}}"`，本轮直接失败。不设置后，宿主基线提示词、
+工具引导、运行时上下文照常追加，与标准模式逐字一致，不掺任何 MC 专属文字；
+游戏怎么用由各个 `mcp__minecraft__*` 工具自己的说明负责。
+
+代价：preset 的子插件在 profile 加载时就挂载，所以多这一行会多出一个 `mcp-client`
+和它拉起的第二个 `minecraft-mcp-bridge` 进程。桥只做 stdio↔HTTP 代理、不占端口，
+多一个进程没有副作用；想清掉多余的桥，重启 DSH 进程。
 
 ## 改了之后怎么生效
 
@@ -116,7 +146,7 @@ dsh plugin --profile web add ./MCPServerDSHPlug
 
 ## 许可证
 
-- **代码与配置**（`index.js`、`cordis.patch.yml`、`package.json`）：
+- **代码与配置**（`cordis.patch.yml`、`package.json`）：
   GPL-3.0-only，见 [LICENSE](LICENSE)
 - **文档**（`README.md` 及其他 `.md`）：CC BY-NC-SA 4.0，
   见 [LICENSE.CC-BY-NC-SA-4.0](LICENSE.CC-BY-NC-SA-4.0)

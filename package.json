@@ -2,15 +2,8 @@
   "name": "dsh-minecraft-bridge-bundle",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
-  "description": "DSH bundle：把本机的 Minecraft 客户端控制桥（MCP stdio server）接进 profile（mcp__minecraft__* 工具），并声明只保留这些工具的「MC 模式」agent preset。",
-  "main": "index.js",
-  "exports": {
-    ".": "./index.js",
-    "./package.json": "./package.json"
-  },
+  "description": "DSH bundle：声明「MC 模式」与「MC 模式+」两个 agent preset。前者只留游戏控制与观测，后者在标准模式的全部工具之上再接入 Minecraft 客户端控制桥（MCP stdio server）；mcp__minecraft__* 只对这两个模式可见。",
   "files": [
-    "index.js",
     "cordis.patch.yml",
     "LICENSE",
     "LICENSE.CC-BY-NC-SA-4.0",
@@ -23,8 +16,8 @@
   },
   "license": "GPL-3.0-only",
   "meta": {
-    "title": "Minecraft 桥 + MC 模式",
-    "description": "接入 MCPServer（MCP stdio 程序），并声明只保留 mcp__minecraft__* 与少量流程工具的「MC 模式」。"
+    "title": "Minecraft 桥 + MC 模式 / MC 模式+",
+    "description": "「MC 模式」只留游戏控制与观测；「MC 模式+」用标准模式提示词与标准模式全部工具，另加 mcp__minecraft__*。"
   },
   "dsh": {
     "manifestVersion": 1,
