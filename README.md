@@ -16,10 +16,10 @@ profile 加载时把 `cordis.patch.yml` 这一层叠到组合上。它是**配�
    （「MC 模式」）、`id: mc-plus`（「MC 模式+」，标准模式 ∪ MC 模式）。
 2. **在这两个模式的 scope 里接入 MCPServer**：各自的插件表里挂一行
    `@deepseek-ai/dsh-mcp-client`，用 stdio 启动 `bin/minecraft-mcp-bridge.mjs`，
-   于是选了这两个模式的 Agent 出现 11 个 `mcp__minecraft__*` 工具
+   于是选了这两个模式的 Agent 出现 14 个 `mcp__minecraft__*` 工具
    （status / help / player / inventory / world / chat / sounds / screenshot /
-   cursor / control / op），其他模式完全看不到这些工具。
-   「MC 模式+」在这 11 个之外还有标准模式的全部工具，系统提示词与标准模式相同。
+   cursor / control / op / baritone / killaura / request），其他模式完全看不到这些工具。
+   「MC 模式+」在这 14 个之外还有标准模式的全部工具，系统提示词与标准模式相同。
 
 MCP 客户端放在 preset 里而不是宿主全局层，是因为 `dsh-mcp-client` 把工具注册在
 挂载它的 scope 上：preset 自己挂载的工具只在选中该 preset 的 Agent 面前出现。
@@ -48,6 +48,7 @@ LICENSE.CC-BY-NC-SA-4.0  文档许可
 - 游戏侧：`.minecraft/mods` 里加载 `httpdprovider` + `mcctl` +
   `advanced-info-fetch` + `craftcmd`，共享 HTTP 服务监听 `127.0.0.1:3420`
   （游戏窗口标题会带 ` - 3420`）
+- 可选：`mgbaritoneconnector` + Baritone（`/bt`）、`killaura`（`/ka`）
 
 ## 安装
 
@@ -83,9 +84,12 @@ dsh --profile web --dump-config | grep -A10 'mcp-minecraft'
 需要再过滤。最终可调用：
 
 ```
-mcp__minecraft__*（11 个，preset 自己挂载的 mcp-client 提供）
+mcp__minecraft__*（14 个，preset 自己挂载的 mcp-client 提供）
 todo_write  create_goal  get_goal  update_goal  exit_plan_mode  ask_user_question
 ```
+
+> 14 个工具里，`baritone` 对应 `/bt/`，`killaura` 对应 `/ka/*`；
+> 以后新增的 endpoint 可以先用 `help` 看说明，再用通用的 `request` 调用。
 
 `create_goal` / `get_goal` / `update_goal`（`dsh-tool-goal`）、`ask_user_question`
 （`dsh-tool-ask-user`）、`todo_write`（`dsh-tool-todo`）、`exit_plan_mode`
@@ -102,7 +106,7 @@ todo_write  create_goal  get_goal  update_goal  exit_plan_mode  ask_user_questio
 `preset-mc-plus`（`id: mc-plus`，显示名「MC 模式+」，`order: 8`）是标准模式与
 MC 模式的并集：
 
-- **工具面** = 标准模式的全部插件 + `mcp__minecraft__*`（11 个）。
+- **工具面** = 标准模式的全部插件 + `mcp__minecraft__*`（14 个）。
 - **系统提示词** = 标准模式的提示词，一字不改。
 
 `plugins` 就是 shipped `@deepseek-ai/dsh-web-app/presets/standard.patch.yml` 里那份

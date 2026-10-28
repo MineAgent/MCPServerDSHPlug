@@ -6,12 +6,13 @@
 # 桥是一个独立的 MCP stdio 程序：/home/DSH/Projects/mcp/server
 # （入口 bin/minecraft-mcp-bridge.mjs，自带依赖，可以脱离 DSH 单独跑）。
 # 它把 .minecraft/mods 里几个模组挂在 127.0.0.1:3420 的 HTTP 接口
-# （/ctl 控制、/aif 只读状态、/op 容器操作）暴露成工具：
+# （/ctl 控制、/aif 只读状态、/op 容器操作、/bt Baritone、/ka Kill Aura）
+# 暴露成工具：
 #   mcp__minecraft__status / help / player / inventory / world / chat /
-#   sounds / screenshot / cursor / control / op
+#   sounds / screenshot / cursor / control / op / baritone / killaura / request
 #
 # MCP 客户端挂在 preset 自己的 plugins 里，而不是宿主全局层：mcp-client 的
-# 工具注册在挂载它的那个 scope 上，所以这 11 个工具只对选了 MC 模式的
+# 工具注册在挂载它的那个 scope 上，所以这 14 个工具只对选了 MC 模式的
 # Agent 可见，其他模式（标准 / PTC / 极简 / 创造 / 用户自建）完全看不到。
 #
 # 这套部署里工具本来就由各个 preset 自己挂载，宿主全局层是空的；MC 模式的
@@ -60,7 +61,8 @@
                 2. 想知道刚才发生了什么，就读 chat 和 sounds：指令输出、Baritone 反馈、报错与关键声音都在那里。
                 3. 定时输入配合 waitMs 使用，等它做完再读状态。
                 4. 界面操作优先用 op：结果精确，并且直接返回。需要点鼠标时，先 screenshot 看清界面，再用 cursor 取坐标，最后用 control 的 `mouse goto <x> <y>` 定位。
-                5. 服务异常时先跑 status 自检。
+                5. 寻路与自动采集用 baritone；Kill Aura 的开关与配置用 killaura。遇到没有专用工具的新 endpoint，先 help 看说明，再用 request 兜底。
+                6. 服务异常时先跑 status 自检。
 
                 任务
                 - 多步任务用 todo_write 记录进度。
@@ -91,7 +93,7 @@
                     计划写清目标、成功标准、要做哪些改动、怎么验证，以及有哪些假设。
                     确认之后再动手。
     # ── MC 模式+ ─────────────────────────────────────────────────────────────
-    # 工具面 = 标准模式的全部插件 + MC 模式自己挂载的 mcp-client（11 个
+    # 工具面 = 标准模式的全部插件 + MC 模式自己挂载的 mcp-client（14 个
     # mcp__minecraft__*）。所以下面这份 plugins 清单就是 standard.patch.yml 的
     # 完整副本，只多一行 mcp-minecraft，一行不少、一行不多。
     #

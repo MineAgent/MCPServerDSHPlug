@@ -1,6 +1,6 @@
 {
   "name": "dsh-minecraft-bridge-bundle",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "DSH bundle：声明「MC 模式」与「MC 模式+」两个 agent preset。前者只留游戏控制与观测，后者在标准模式的全部工具之上再接入 Minecraft 客户端控制桥（MCP stdio server）；mcp__minecraft__* 只对这两个模式可见。",
   "files": [
