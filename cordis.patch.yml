@@ -3,8 +3,9 @@
 #
 # 这个 bundle 只声明一件事：MC 模式（agent preset `mc`）。
 #
-# 桥是一个独立的 MCP stdio 程序：/home/DSH/Projects/mcp/server
+# 桥是一个独立的 MCP stdio 程序，来自 MCPServer 仓库
 # （入口 bin/minecraft-mcp-bridge.mjs，自带依赖，可以脱离 DSH 单独跑）。
+# 默认按 ~/Projects/mcp/server 查找；装在别处时用 MC_BRIDGE_BIN 覆盖。
 # 它把 .minecraft/mods 里几个模组挂在 127.0.0.1:3420 的 HTTP 接口
 # （/ctl 控制、/aif 只读状态、/op 容器操作、/bt Baritone、/ka Kill Aura）
 # 暴露成工具：
@@ -41,11 +42,14 @@
             config:
               serverName: minecraft
               transport: stdio
-              command: /usr/bin/node
+              # spawn 不经过 shell，command 只能是单个可执行文件，
+              # 所以 `/usr/bin/env node` 要拆成 command + 第一个参数。
+              command: /usr/bin/env
               args:
-                # MCPServer 的入口。换机器或换目录时，用环境变量 MC_BRIDGE_BIN 覆盖，
-                # 或者直接把下面的默认值改成你本地的 bin/minecraft-mcp-bridge.mjs 路径。
-                - !!js process.env.MC_BRIDGE_BIN ?? '/home/DSH/Projects/mcp/server/bin/minecraft-mcp-bridge.mjs'
+                - node
+                # MCPServer 的入口。默认按 ~/Projects/mcp/server 展开，
+                # 换机器或换目录时用环境变量 MC_BRIDGE_BIN 覆盖。
+                - !!js process.env.MC_BRIDGE_BIN ?? (process.env.HOME ?? process.env.USERPROFILE ?? '') + '/Projects/mcp/server/bin/minecraft-mcp-bridge.mjs'
               toolCallTimeoutMs: 240000
               failOnStartupError: true
           - id: persona
@@ -129,9 +133,11 @@
             config:
               serverName: minecraft
               transport: stdio
-              command: /usr/bin/node
+              # 同 preset-mc：spawn 不经过 shell，`/usr/bin/env node` 拆成两个字段。
+              command: /usr/bin/env
               args:
-                - !!js process.env.MC_BRIDGE_BIN ?? '/home/DSH/Projects/mcp/server/bin/minecraft-mcp-bridge.mjs'
+                - node
+                - !!js process.env.MC_BRIDGE_BIN ?? (process.env.HOME ?? process.env.USERPROFILE ?? '') + '/Projects/mcp/server/bin/minecraft-mcp-bridge.mjs'
               toolCallTimeoutMs: 240000
               failOnStartupError: true
           - id: agent-instructions

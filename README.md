@@ -39,7 +39,7 @@ LICENSE.CC-BY-NC-SA-4.0  文档许可
 
 - DSH（`dsh` CLI 或 Desktop），profile 例如 `web`；安装用
   `dsh plugin --profile <name> add <包>`
-- Node.js ≥ 20（默认用 `/usr/bin/node`）
+- Node.js ≥ 20（`/usr/bin/env node` 能找到的版本即可）
 - [MCPServer](https://github.com/MineAgent/MCPServer)：
   ```sh
   git clone git@github.com:MineAgent/MCPServer.git
