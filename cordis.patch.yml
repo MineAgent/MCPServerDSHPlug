@@ -5,7 +5,8 @@
 #
 # 桥是一个独立的 MCP stdio 程序，来自 MCPServer 仓库
 # （入口 bin/minecraft-mcp-bridge.mjs，自带依赖，可以脱离 DSH 单独跑）。
-# 默认按 ~/Projects/mcp/server 查找；装在别处时用 MC_BRIDGE_BIN 覆盖。
+# 默认在 ~/Projects/mcp/server、~/mcp/server、~/MCPServer 里依次查找；
+# 装在别处时用 MC_BRIDGE_BIN 指定入口文件。
 # 它把 .minecraft/mods 里几个模组挂在 127.0.0.1:3420 的 HTTP 接口
 # （/ctl 控制、/aif 只读状态、/op 容器操作、/bt Baritone、/ka Kill Aura）
 # 暴露成工具：
@@ -47,9 +48,22 @@
               command: /usr/bin/env
               args:
                 - node
-                # MCPServer 的入口。默认按 ~/Projects/mcp/server 展开，
-                # 换机器或换目录时用环境变量 MC_BRIDGE_BIN 覆盖。
-                - !!js process.env.MC_BRIDGE_BIN ?? (process.env.HOME ?? process.env.USERPROFILE ?? '') + '/Projects/mcp/server/bin/minecraft-mcp-bridge.mjs'
+                # MCPServer 的入口：优先 MC_BRIDGE_BIN，否则依次找
+                # ~/Projects/mcp/server、~/mcp/server、~/MCPServer。
+                - !!js >-
+                    (() => {
+                      const fs = process.getBuiltinModule('node:fs');
+                      const path = process.getBuiltinModule('node:path');
+                      const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+                      const rel = 'bin/minecraft-mcp-bridge.mjs';
+                      if (process.env.MC_BRIDGE_BIN) return process.env.MC_BRIDGE_BIN;
+                      const candidates = [
+                        path.join(home, 'Projects/mcp/server', rel),
+                        path.join(home, 'mcp/server', rel),
+                        path.join(home, 'MCPServer', rel)
+                      ];
+                      return candidates.find((file) => fs.existsSync(file)) ?? candidates[0];
+                    })()
               toolCallTimeoutMs: 240000
               failOnStartupError: true
           - id: persona
@@ -137,7 +151,21 @@
               command: /usr/bin/env
               args:
                 - node
-                - !!js process.env.MC_BRIDGE_BIN ?? (process.env.HOME ?? process.env.USERPROFILE ?? '') + '/Projects/mcp/server/bin/minecraft-mcp-bridge.mjs'
+                # 同 preset-mc：优先 MC_BRIDGE_BIN，否则自动查找。
+                - !!js >-
+                    (() => {
+                      const fs = process.getBuiltinModule('node:fs');
+                      const path = process.getBuiltinModule('node:path');
+                      const home = process.env.HOME ?? process.env.USERPROFILE ?? '';
+                      const rel = 'bin/minecraft-mcp-bridge.mjs';
+                      if (process.env.MC_BRIDGE_BIN) return process.env.MC_BRIDGE_BIN;
+                      const candidates = [
+                        path.join(home, 'Projects/mcp/server', rel),
+                        path.join(home, 'mcp/server', rel),
+                        path.join(home, 'MCPServer', rel)
+                      ];
+                      return candidates.find((file) => fs.existsSync(file)) ?? candidates[0];
+                    })()
               toolCallTimeoutMs: 240000
               failOnStartupError: true
           - id: agent-instructions

@@ -60,10 +60,17 @@ dsh plugin --profile web add ./MCPServerDSHPlug
 dsh plugin --profile web add github:MineAgent/MCPServerDSHPlug
 ```
 
-然后把入口路径指过去，两种方式任选：
+然后把入口路径指过去。桥的入口按下面的顺序确定：
 
-- 给 DSH 进程设环境变量 `MC_BRIDGE_BIN=/path/to/MCPServer/bin/minecraft-mcp-bridge.mjs`
-- 或直接改 `cordis.patch.yml` 里 `mcp-minecraft` 那行 `args` 的默认值
+1. 环境变量 `MC_BRIDGE_BIN`（设置后优先，原样使用）；
+2. 依次查找 `~/Projects/mcp/server`、`~/mcp/server`、`~/MCPServer` 下
+   是否存在 `bin/minecraft-mcp-bridge.mjs`；
+3. 都不存在时退回 `~/Projects/mcp/server/bin/minecraft-mcp-bridge.mjs`，
+   启动报错里会带上这条完整路径。
+
+装在别的目录时，给启动 DSH 的那个进程设
+`MC_BRIDGE_BIN=/path/to/MCPServer/bin/minecraft-mcp-bridge.mjs` 即可，
+不需要改 `cordis.patch.yml`。
 
 验证这一层被加载：
 
